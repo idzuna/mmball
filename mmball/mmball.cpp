@@ -141,10 +141,6 @@ void ProcessInput(const Parameter& parameter, const RAWMOUSE& mouse)
     static double dy = 0;
     static bool scrolling = false;
 
-    if (mouse.usFlags & MOUSE_MOVE_ABSOLUTE) {
-        return;
-    }
-
     INPUT input = { INPUT_MOUSE };
 
     auto process = [&](Role role, Role whenNoChange, bool up) {
@@ -208,7 +204,12 @@ void ProcessInput(const Parameter& parameter, const RAWMOUSE& mouse)
         process(parameter.x2, Role::X2, true);
     }
 
-    if (scrolling) {
+    if (mouse.usFlags & MOUSE_MOVE_ABSOLUTE) {
+        input.mi.dx = mouse.lLastX;
+        input.mi.dy = mouse.lLastY;
+        input.mi.dwFlags |= MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+        g_sender.send(input);
+    } else if (scrolling) {
         g_sender.send(input);
         if (mouse.lLastX != 0 || mouse.lLastY != 0) {
             const double k = parameter.acceleration.get(mouse.lLastX, mouse.lLastY);

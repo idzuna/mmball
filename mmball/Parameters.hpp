@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <cmath>
 #include <vector>
 #include <string>
 
