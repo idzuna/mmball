@@ -14,13 +14,14 @@ constexpr char MUTEX_NAME[] = "MMBALL RUNNING MUTEX";
 constexpr char USAGE_STRING[] =
 "マウスボタンの入れ替えとスクロールエミュレートを行います\n"
 "\n"
-"MMBALL [/?] [/V] [/K] [/Lx] [/Rx] [/Mx] [/1x] [/2x] [/A 加速度] [/S 感度]\n"
+"MMBALL [/?] [/V] [/K] [/P] [/Lx] [/Rx] [/Mx] [/1x] [/2x] [/A 加速度] [/S 感度]\n"
 "  [[/D デバイス] [/Lx] [/Rx] [/Mx] [/1x] [/2x] [/A 感度] [/S 感度]]\n"
 "\n"
 "オプション:\n"
 "  /?            この使い方を表示します。\n"
 "  /V            コンソールへマウス入力の情報を出力します\n"
 "  /K            現在起動している MMBALL をすべて終了し、自身も終了します\n"
+"  /P            複数ディスプレイ接続時のペン入力デバイスの挙動を改善します\n"
 "  /Lx           マウスの左ボタンに役割 x を割り当てます\n"
 "  /Rx           マウスの右ボタンに役割 x を割り当てます\n"
 "  /Mx           マウスの中ボタンに役割 x を割り当てます\n"
@@ -63,6 +64,7 @@ constexpr char USAGE_STRING[] =
 
 static Parameters g_parameters;
 static InputSender g_sender;
+static bool g_passOverMouseMove;
 
 LRESULT CALLBACK LowLevelMouseProc(
     _In_ int    nCode,
@@ -73,6 +75,9 @@ LRESULT CALLBACK LowLevelMouseProc(
     LPMSLLHOOKSTRUCT lpHook = reinterpret_cast<LPMSLLHOOKSTRUCT>(lParam);
 
     if (nCode >= 0 && lpHook->flags == 0) {
+        if (g_passOverMouseMove && wParam == WM_MOUSEMOVE) {
+            return CallNextHookEx(0, nCode, wParam, lParam);
+        }
         switch (wParam) {
         case WM_LBUTTONDOWN:
         case WM_LBUTTONUP:
@@ -205,11 +210,21 @@ void ProcessInput(const Parameter& parameter, const RAWMOUSE& mouse)
     }
 
     if (mouse.usFlags & MOUSE_MOVE_ABSOLUTE) {
-        input.mi.dx = mouse.lLastX;
-        input.mi.dy = mouse.lLastY;
-        input.mi.dwFlags |= MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
-        g_sender.send(input);
-    } else if (scrolling) {
+        if (g_parameters.global().pen) {
+            g_passOverMouseMove = true;
+            if (input.mi.dwFlags) {
+                g_sender.send(input);
+            }
+        } else {
+            input.mi.dx = mouse.lLastX;
+            input.mi.dy = mouse.lLastY;
+            input.mi.dwFlags |= MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+            g_sender.send(input);
+        }
+        return;
+    }
+    g_passOverMouseMove = false;
+    if (scrolling) {
         g_sender.send(input);
         if (mouse.lLastX != 0 || mouse.lLastY != 0) {
             const double k = parameter.acceleration.get(mouse.lLastX, mouse.lLastY);

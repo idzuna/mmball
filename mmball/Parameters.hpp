@@ -57,6 +57,7 @@ struct GlobalParameter
     bool help = false;
     bool verbose = false;
     bool kill = false;
+    bool pen = false;
 };
 
 class Parameters
@@ -106,6 +107,8 @@ public:
                 global_.verbose = true;
             } else if (_strnicmp("/K", argv[i], 2) == 0) {
                 global_.kill = true;
+            } else if (_strnicmp("/P", argv[i], 2) == 0) {
+                global_.pen = true;
             } else if (_strnicmp("/D", argv[i], 2) == 0) {
                 parameters_.push_back(param);
                 param = Parameter();
